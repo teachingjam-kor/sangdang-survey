@@ -771,12 +771,12 @@ async function showRespDetail(resp, teacherId){
   qs.filter(q=>q.type==='file').forEach(q=>{
     const key=String(q.id);
     if(!fileUrls[key]){
-      const fileName=answers[key];
-      if(fileName){
-        const safeName=fileName.replace(/\s+/g,'_');
-        const storageName=`${key}_${safeName}`;
-        const url=`${SURL}/storage/v1/object/public/attachments/${sid}/${teacherId}/${encodeURIComponent(storageName)}`;
-        fileUrls[key]={url, name:fileName}; // 표시는 원본 파일명으로
+      const displayName=answers[key];        // 원본 파일명 (표시용)
+      const storageName=answers[`${key}_path`]||  // 실제 저장된 파일명
+        (displayName?displayName.replace(/\s+/g,'_').replace(/[^\w._-]/g,'_'):null);
+      if(displayName && storageName){
+        const url=`${SURL}/storage/v1/object/public/attachments/${sid}/${teacherId}/${String(key)}_${storageName}`;
+        fileUrls[key]={url, name:displayName};
       }
     }
   });

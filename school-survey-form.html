@@ -250,12 +250,26 @@ async function submitForm(){
     if(error)throw error;
     // 파일 업로드
     for(const [qid,file] of Object.entries(files)){
-      const safeName=file.name.replace(/\s+/g,'_');
-      const path=`${sid}/${selectedTeacher}/${String(qid)}_${safeName}`;
+      // 파일명에서 공백, 한글 등 특수문자 제거 - 영문/숫자/점/하이픈만 허용
+      const ext=file.name.split('.').pop();
+      const safeName=file.name
+        .replace(/\s+/g,'_')
+        .replace(/[^\w가-힣._-]/g,'_');
+      // 한글이 포함된 경우 타임스탬프 기반 이름으로 대체
+      const hasKorean=/[가-힣]/.test(safeName);
+      const finalName=hasKorean?`file_${Date.now()}.${ext}`:safeName;
+      const path=`${sid}/${selectedTeacher}/${String(qid)}_${finalName}`;
+      console.log('파일 업로드 시도:', path);
       const{error:fe}=await sb.storage.from('attachments').upload(path,file,{upsert:true});
-      if(fe)console.warn('파일 업로드 실패:',fe.message);
-      // answers에도 안전한 파일명으로 업데이트
-      finalAnswers[String(qid)]=safeName;
+      if(fe){
+        console.error('파일 업로드 실패:', fe);
+        alert(`파일 업로드 실패: ${fe.message}\n\n경로: ${path}`);
+        btn.innerHTML='제출하기';btn.disabled=false;
+        return;
+      }
+      // answers에 원본 파일명 저장 (표시용), storage 경로는 별도 저장
+      finalAnswers[String(qid)]=file.name;
+      finalAnswers[`${String(qid)}_path`]=finalName;
     }
     showDone();
   }catch(err){
