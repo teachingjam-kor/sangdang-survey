@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>상당초 수합 시스템 — 관리자</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F3EE;--surface:#fff;--s2:#F0EDE7;--border:#DDD9D0;
+  --text:#1A1916;--muted:#7A7670;
+  --green:#2D6A4F;--green-l:#E8F5EE;
+  --red:#E76F51;--red-l:#FFF0EC;
+  --blue:#2563EB;--blue-l:#EFF6FF;
+  --amber:#D97706;--amber-l:#FFFBEB;
+  --r:10px;--sh:0 2px 12px rgba(0,0,0,.07);--sh2:0 6px 28px rgba(0,0,0,.11);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.app{display:flex;min-height:100vh}
+.sidebar{width:218px;background:var(--text);color:#fff;padding:28px 0;flex-shrink:0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow-y:auto}
+.logo{padding:0 22px 22px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:14px}
+.logo-title{font-size:14px;font-weight:700;letter-spacing:.04em}
+.logo-sub{font-size:10px;opacity:.4;margin-top:3px;letter-spacing:.1em}
+.nav{display:flex;align-items:center;gap:9px;padding:10px 22px;cursor:pointer;font-size:13px;font-weight:500;border-left:3px solid transparent;color:rgba(255,255,255,.55);transition:all .15s;user-select:none}
+.nav:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav.on{border-left-color:var(--green);color:#fff;background:rgba(255,255,255,.08)}
+.nav-ic{width:18px;text-align:center;font-size:13px}
+.sidebar-foot{margin-top:auto;padding:16px 22px 0;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.3);line-height:1.7}
+.main{flex:1;overflow-x:hidden;min-width:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar h1{font-size:15px;font-weight:700}
+.topbar p{font-size:11px;color:var(--muted);margin-top:2px}
+.page{padding:26px 28px;display:none}
+.page.on{display:block}
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:inherit;white-space:nowrap}
+.btn-p{background:var(--green);color:#fff}.btn-p:hover{background:#235c41}
+.btn-g{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-g:hover{background:var(--s2)}
+.btn-r{background:var(--red-l);color:#c1440f;border:1px solid #fcd4c5}.btn-r:hover{background:#ffe0d4}
+.btn-b{background:var(--blue-l);color:var(--blue);border:1px solid #bfdbfe}.btn-b:hover{background:#dbeafe}
+.btn-sm{padding:5px 10px;font-size:12px}
+/* 폼 */
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em}
+.inp{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);transition:border-color .15s}
+.inp:focus{outline:none;border-color:var(--green)}
+.inp-sm{padding:6px 10px;font-size:12px}
+.frow{margin-bottom:14px}
+.frow2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* 배지 */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500}
+.bg-green{background:var(--green-l);color:var(--green)}
+.bg-red{background:var(--red-l);color:#c1440f}
+.bg-blue{background:var(--blue-l);color:var(--blue)}
+.bg-amber{background:var(--amber-l);color:var(--amber)}
+.bg-gray{background:var(--s2);color:var(--muted)}
+/* 카드 */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh)}
+/* 스탯 */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh)}
+.stat-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.stat-val{font-size:24px;font-weight:700;font-family:'DM Mono',monospace;line-height:1}
+/* 섹션 */
+.sec{font-size:13px;font-weight:700;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+/* 수합 카드 */
+.survey-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:box-shadow .15s;margin-bottom:8px}
+.survey-row:hover{box-shadow:var(--sh2)}
+.bar-w{width:100px;flex-shrink:0}
+.bar-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px}
+.bar{height:5px;background:var(--s2);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--green)}
+.bar-fill.warn{background:var(--red)}
+/* 테이블 */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+table{width:100%;border-collapse:collapse}
+th{background:var(--s2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:9px 14px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+.dot-g{background:var(--green)}.dot-r{background:var(--red)}
+/* 수합 만들기 */
+.builder{max-width:720px}
+.q-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px}
+.q-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.q-num{width:22px;height:22px;border-radius:50%;background:var(--text);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.q-type-tag{font-size:10px;background:var(--s2);border-radius:5px;padding:2px 7px;color:var(--muted);font-family:'DM Mono',monospace}
+.q-del{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px}
+.q-del:hover{color:#dc2626}
+.add-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.add-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px dashed var(--border);background:transparent;color:var(--muted);transition:all .15s;font-family:inherit}
+.add-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-l)}
+/* 대상자 선택 */
+.target-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.group-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.g-chip{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);transition:all .15s;user-select:none}
+.g-chip:hover{border-color:var(--green);color:var(--green);background:var(--green-l)}
+.g-chip.sel{border-color:var(--green);background:var(--green);color:#fff}
+.t-grid{display:flex;flex-wrap:wrap;gap:6px}
+.t-chip{display:inline-flex;align-items:center;padding:5px 11px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--muted);transition:all .15s;user-select:none}
+.t-chip:hover{border-color:var(--green);background:var(--green-l);color:var(--green)}
+.t-chip.sel{border-color:var(--green);background:var(--green-l);color:var(--green);font-weight:500}
+/* 응답 현황 */
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.pending-box{background:var(--red-l);border:1px solid #fcd4c5;border-radius:var(--r);padding:14px 16px;margin-top:14px}
+.pending-names{font-family:'DM Mono',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px 14px;margin:8px 0;line-height:2;word-break:keep-all;white-space:pre-wrap}
+/* 모달 */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+.mbg.on{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:var(--sh2);transform:scale(.96);transition:transform .2s;max-height:90vh;overflow-y:auto}
+.mbg.on .modal{transform:scale(1)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:16px}
+.ma{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
+/* 로딩 */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;z-index:200;font-size:14px;font-weight:600;color:var(--muted);gap:10px}
+/* 토스트 */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--text);color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:500;transform:translateY(70px);opacity:0;transition:all .3s;z-index:300;max-width:320px}
+.toast.on{transform:translateY(0);opacity:1}
+/* 응답 폼 링크 박스 */
+.link-box{background:var(--green-l);border:1px solid #a7d7bc;border-radius:8px;padding:12px 14px;font-family:'DM Mono',monospace;font-size:12px;word-break:break-all;color:var(--green);margin-bottom:8px}
+@media(max-width:660px){
+  .sidebar{display:none}.stat-grid{grid-template-columns:1fr 1fr}.page{padding:14px}.topbar{padding:12px 14px}.frow2{grid-template-columns:1fr}.bar-w{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading"><div class="spinner" style="border-top-color:var(--green)"></div> 불러오는 중...</div>
+
+<div class="app">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-title">상당초 수합 시스템</div>
+    <div class="logo-sub">ADMIN · SANGDANG</div>
+  </div>
+  <nav>
+    <div class="nav on" data-p="dashboard"><span class="nav-ic">◈</span>대시보드</div>
+    <div class="nav" data-p="create"><span class="nav-ic">＋</span>수합 만들기</div>
+    <div class="nav" data-p="responses"><span class="nav-ic">◉</span>응답 현황</div>
+    <div class="nav" data-p="teachers"><span class="nav-ic">◎</span>선생님 명단</div>
+  </nav>
+  <div class="sidebar-foot">
+    Supabase 연동 완료<br>
+    데이터가 클라우드에<br>안전하게 저장됩니다
+  </div>
+</aside>
+
+<div class="main">
+<div class="topbar">
+  <div><h1 id="pg-title">대시보드</h1><p id="pg-sub">전체 수합 현황</p></div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-g" onclick="showPage('responses')">응답 현황</button>
+    <button class="btn btn-p" onclick="showPage('create')">＋ 새 수합</button>
+  </div>
+</div>
+
+<!-- 대시보드 -->
+<div class="page on" id="page-dashboard">
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-lbl">진행 중인 수합</div><div class="stat-val" style="color:var(--green)" id="s-active">—</div></div>
+    <div class="stat-card"><div class="stat-lbl">전체 응답 수</div><div class="stat-val" id="s-total">—</div></div>
+    <div class="stat-card"><div class="stat-lbl">미응답 선생님</div><div class="stat-val" style="color:var(--red)" id="s-pending">—</div></div>
+    <div class="stat-card"><div class="stat-lbl">평균 응답률</div><div class="stat-val" style="color:var(--amber)" id="s-rate">—</div></div>
+  </div>
+  <div class="sec">진행 중인 수합</div>
+  <div id="dash-surveys"><div style="color:var(--muted);font-size:13px">불러오는 중...</div></div>
+  <div class="sec" style="margin-top:20px">수합별 미응답 현황</div>
+  <div id="dash-pending"></div>
+</div>
+
+<!-- 수합 만들기 -->
+<div class="page" id="page-create">
+<div class="builder">
+  <div class="sec">기본 정보</div>
+  <div class="card" style="padding:18px;margin-bottom:16px">
+    <div class="frow"><label class="lbl">수합 제목 *</label><input class="inp" id="c-title" placeholder="예: 2025 학예회 참가 신청"></div>
+    <div class="frow"><label class="lbl">안내 문구</label><input class="inp" id="c-desc" placeholder="선생님들에게 표시될 설명"></div>
+    <div class="frow2">
+      <div class="frow" style="margin-bottom:0"><label class="lbl">마감일</label><input class="inp" type="date" id="c-deadline"></div>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="sec">대상자 선택</div>
+  <div class="target-panel">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:9px">그룹 버튼으로 일괄 선택, 이름 클릭으로 개별 조정</div>
+    <div class="group-chips" id="g-chips"></div>
+    <div style="height:1px;background:var(--border);margin:10px 0"></div>
+    <div class="t-grid" id="t-chips"></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:9px" id="sel-count">0명 선택됨</div>
+  </div>
+
+  <div class="sec">질문 목록</div>
+  <div id="q-list"></div>
+  <div class="add-bar">
+    <button class="add-btn" onclick="addQ('short')">＋ 단답형</button>
+    <button class="add-btn" onclick="addQ('long')">＋ 서술형</button>
+    <button class="add-btn" onclick="addQ('radio')">＋ 객관식(단일)</button>
+    <button class="add-btn" onclick="addQ('check')">＋ 객관식(복수)</button>
+    <button class="add-btn" onclick="addQ('file')">＋ 파일 첨부</button>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-p" onclick="publishSurvey()" id="pub-btn">배포하기 →</button>
+  </div>
+</div>
+</div>
+
+<!-- 응답 현황 -->
+<div class="page" id="page-responses">
+  <div class="filter-bar">
+    <select class="inp" id="resp-sel" style="width:auto;max-width:280px" onchange="loadResponses()">
+      <option value="">수합을 선택하세요</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);user-select:none">
+      <input type="checkbox" id="only-pend" onchange="renderRespTable()" style="accent-color:var(--red);width:15px;height:15px">
+      미응답자만 보기
+    </label>
+    <button class="btn btn-b btn-sm" onclick="exportCSV()">⬇ CSV 내보내기</button>
+  </div>
+  <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px" id="r-stats" hidden>
+    <div class="stat-card"><div class="stat-lbl">응답 완료</div><div class="stat-val" style="color:var(--green)" id="r-done">0</div></div>
+    <div class="stat-card"><div class="stat-lbl">미응답</div><div class="stat-val" style="color:var(--red)" id="r-pend">0</div></div>
+    <div class="stat-card"><div class="stat-lbl">응답률</div><div class="stat-val" style="color:var(--amber)" id="r-rate">—</div></div>
+  </div>
+  <div class="tbl-wrap" id="r-tbl" hidden>
+    <table>
+      <thead><tr><th>#</th><th>이름</th><th>그룹·담당</th><th>제출 시각</th><th>상태</th><th>응답 내용</th></tr></thead>
+      <tbody id="r-tbody"></tbody>
+    </table>
+  </div>
+  <div class="pending-box" id="pend-box" hidden>
+    <div style="font-size:13px;font-weight:700;color:#c1440f;margin-bottom:4px">📋 미응답 선생님 명단</div>
+    <div style="font-size:12px;color:var(--muted)">아래 명단을 복사해서 교내 메신저에 붙여넣으세요.</div>
+    <div class="pending-names" id="pend-names"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-r btn-sm" onclick="copyNames()">이름만 복사</button>
+      <button class="btn btn-r btn-sm" onclick="copyNamesFull()">이름+담당 복사</button>
+      <span id="copy-ok" style="font-size:12px;color:var(--green);display:none">✓ 복사됨</span>
+    </div>
+  </div>
+</div>
+
+<!-- 선생님 명단 -->
+<div class="page" id="page-teachers">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div class="sec" style="margin-bottom:0">선생님 명단 <span class="badge bg-gray" id="t-count">—</span></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-g btn-sm" onclick="openGroupMgr()">그룹 관리</button>
+      <button class="btn btn-p" onclick="openAddTeacher()">＋ 선생님 추가</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <input class="inp" id="t-search" placeholder="이름 검색..." style="width:160px" oninput="renderTeachers()">
+    <select class="inp" id="t-gf" style="width:auto" onchange="renderTeachers()"><option value="">전체 그룹</option></select>
+    <select class="inp" id="t-sf" style="width:auto" onchange="renderTeachers()"><option value="">전체 상태</option><option value="active">재직</option><option value="leave">휴직</option></select>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>이름</th><th>그룹</th><th>담당</th><th>상태</th><th></th></tr></thead>
+      <tbody id="t-tbody"></tbody>
+    </table>
+  </div>
+</div>
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<!-- 선생님 모달 -->
+<div class="mbg" id="m-t">
+  <div class="modal">
+    <h3 id="m-t-title">선생님 추가</h3>
+    <input type="hidden" id="et-id">
+    <div class="frow"><label class="lbl">이름 *</label><input class="inp" id="et-name" placeholder="홍길동"></div>
+    <div class="frow"><label class="lbl">그룹</label><select class="inp" id="et-group"><option value="">없음</option></select></div>
+    <div class="frow"><label class="lbl">담당 (학년반·업무)</label><input class="inp" id="et-note" placeholder="예: 3학년 2반 / 과학 전담"></div>
+    <div class="frow"><label class="lbl">상태</label><select class="inp" id="et-status"><option value="active">재직 중</option><option value="leave">휴직</option></select></div>
+    <div class="ma">
+      <button class="btn btn-g" onclick="closeM('m-t')">취소</button>
+      <button class="btn btn-p" onclick="saveTeacher()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 그룹 관리 모달 -->
+<div class="mbg" id="m-g">
+  <div class="modal">
+    <h3>그룹 관리</h3>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input class="inp" id="ng-name" placeholder="새 그룹 이름">
+      <button class="btn btn-p" onclick="addGroup()" style="white-space:nowrap">추가</button>
+    </div>
+    <div id="g-list"></div>
+    <div class="ma"><button class="btn btn-g" onclick="closeM('m-g')">닫기</button></div>
+  </div>
+</div>
+
+<!-- 개별 응답 상세 모달 -->
+<div class="mbg" id="m-resp">
+  <div class="modal" style="max-width:560px">
+    <h3 id="m-resp-title">응답 내용</h3>
+    <div id="m-resp-meta" style="font-size:12px;color:var(--muted);margin-bottom:16px"></div>
+    <div id="m-resp-body" style="display:flex;flex-direction:column;gap:14px"></div>
+    <div class="ma"><button class="btn btn-g" onclick="closeM('m-resp')">닫기</button></div>
+  </div>
+</div>
+
+<!-- 배포 완료 모달 (링크 공유) -->
+<div class="mbg" id="m-link">
+  <div class="modal">
+    <h3>✓ 수합이 배포되었습니다!</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">아래 링크를 교내 메신저로 선생님들에게 공유하세요.</p>
+    <div class="link-box" id="share-link"></div>
+    <button class="btn btn-p" style="width:100%;justify-content:center;margin-bottom:8px" onclick="copyLink()">링크 복사</button>
+    <div class="ma"><button class="btn btn-g" onclick="closeM('m-link');showPage('dashboard')">확인</button></div>
+  </div>
+</div>
+
+<script>
+// ─── Supabase 초기화 ───
+const SURL = 'https://wbieiiovycgxelxwuqrg.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiaWVpaW92eWNneGVseHd1cXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjg2MzgsImV4cCI6MjA4ODk0NDYzOH0.iB4sx9Ubdwh3T8yH0VmKdENY0lQQRcbux1pMvplScjM';
+const sb = supabase.createClient(SURL, SKEY);
+
+// ─── 상태 ───
+let teachers = [], groups = [], surveys = [], targets = [], responses = [];
+let curQ = [], selTargets = new Set(), qIdx = 1;
+let curSurveyTargets = [], curSurveyResponses = [];
+
+// ─── 페이지 라우팅 ───
+const PT = {
+  dashboard: ['대시보드','전체 수합 현황'],
+  create:    ['수합 만들기','새 수합 폼 설계'],
+  responses: ['응답 현황','선생님별 응답 상태'],
+  teachers:  ['선생님 명단','인원 관리 및 그룹 설정'],
+};
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  document.getElementById('page-'+name).classList.add('on');
+  document.querySelector(`[data-p="${name}"]`).classList.add('on');
+  document.getElementById('pg-title').textContent = PT[name][0];
+  document.getElementById('pg-sub').textContent   = PT[name][1];
+  if(name==='dashboard') renderDash();
+  if(name==='create')    initCreate();
+  if(name==='responses') initResponses();
+  if(name==='teachers')  renderTeachers();
+}
+document.querySelectorAll('.nav').forEach(n=>n.addEventListener('click',()=>showPage(n.dataset.p)));
+
+// ─── 초기 로딩 ───
+async function init() {
+  showLoading(true);
+  await Promise.all([loadTeachers(), loadGroups(), loadSurveys()]);
+  showLoading(false);
+  renderDash();
+}
+
+async function loadTeachers() {
+  const {data} = await sb.from('teachers').select('*').order('id');
+  teachers = data||[];
+}
+async function loadGroups() {
+  const {data} = await sb.from('teachers').select('group').not('group','is',null);
+  const set = new Set((data||[]).map(r=>r.group).filter(Boolean));
+  groups = [...set];
+}
+async function loadSurveys() {
+  const {data} = await sb.from('surveys').select('*').order('created_at',{ascending:false});
+  surveys = data||[];
+}
+
+// ─── 대시보드 ───
+async function renderDash() {
+  await loadSurveys();
+  if(!surveys.length){
+    document.getElementById('dash-surveys').innerHTML='<div style="color:var(--muted);font-size:13px">아직 수합이 없습니다.</div>';
+    document.getElementById('s-active').textContent='0';
+    document.getElementById('s-total').textContent='0';
+    document.getElementById('s-pending').textContent='0';
+    document.getElementById('s-rate').textContent='—';
+    return;
+  }
+  // 각 수합의 타겟/응답 수 가져오기
+  const sids = surveys.map(s=>s.id);
+  const [{data:tData},{data:rData}] = await Promise.all([
+    sb.from('targets').select('survey_id,teacher_id').in('survey_id',sids),
+    sb.from('responses').select('survey_id,teacher_id').in('survey_id',sids),
+  ]);
+  const tMap={}, rMap={};
+  (tData||[]).forEach(r=>{tMap[r.survey_id]=(tMap[r.survey_id]||[]);tMap[r.survey_id].push(r.teacher_id);});
+  (rData||[]).forEach(r=>{rMap[r.survey_id]=(rMap[r.survey_id]||[]);rMap[r.survey_id].push(r.teacher_id);});
+
+  let totalResp=0, pendingSet=new Set(), rateSum=0;
+  surveys.forEach(s=>{
+    const tids=tMap[s.id]||[], rids=new Set(rMap[s.id]||[]);
+    totalResp+=rids.size;
+    tids.forEach(tid=>{if(!rids.has(tid))pendingSet.add(tid);});
+    if(tids.length)rateSum+=rids.size/tids.length*100;
+  });
+  const avgRate=surveys.length?Math.round(rateSum/surveys.length):0;
+  document.getElementById('s-active').textContent=surveys.length;
+  document.getElementById('s-total').textContent=totalResp;
+  document.getElementById('s-pending').textContent=pendingSet.size;
+  document.getElementById('s-rate').textContent=avgRate+'%';
+
+  document.getElementById('dash-surveys').innerHTML=surveys.map(s=>{
+    const tids=tMap[s.id]||[], rids=(rMap[s.id]||[]).length;
+    const pct=tids.length?Math.round(rids/tids.length*100):0;
+    const warn=pct<80;
+    return `<div class="survey-row" onclick="goResp(${s.id})">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title}</div>
+        <div style="font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap">
+          <span>마감 ${s.deadline||'미정'}</span>
+          <span>${rids}/${tids.length}명 응답</span>
+          <span class="badge ${warn?'bg-red':'bg-green'}">${pct}%</span>
+        </div>
+      </div>
+      <div class="bar-w">
+        <div class="bar-lbl"><span>응답률</span><span>${pct}%</span></div>
+        <div class="bar"><div class="bar-fill ${warn?'warn':''}" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 미응답 현황
+  document.getElementById('dash-pending').innerHTML=surveys.map(s=>{
+    const tids=tMap[s.id]||[], rids=new Set(rMap[s.id]||[]);
+    const pend=tids.filter(tid=>!rids.has(tid)).map(tid=>teachers.find(t=>t.id===tid)).filter(Boolean);
+    if(!pend.length)return '';
+    return `<div class="card" style="padding:12px 16px;margin-bottom:9px">
+      <div style="font-weight:600;margin-bottom:7px;font-size:13px">${s.title} <span class="badge bg-red">${pend.length}명 미응답</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">${pend.map(t=>`<span class="badge bg-gray">${t.name}</span>`).join('')}</div>
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:13px">미응답자가 없습니다 🎉</div>';
+}
+
+function goResp(id){
+  showPage('responses');
+  setTimeout(()=>{ document.getElementById('resp-sel').value=id; loadResponses(); },100);
+}
+
+// ─── 수합 만들기 ───
+function initCreate(){
+  curQ=[];selTargets=new Set();qIdx=1;
+  document.getElementById('c-title').value='';
+  document.getElementById('c-desc').value='';
+  document.getElementById('c-deadline').value='';
+  renderGroupChips();renderTChips();renderQList();
+}
+
+function renderGroupChips(){
+  const active=teachers.filter(t=>t.status==='active');
+  const gs=[...new Set(active.map(t=>t.group).filter(Boolean))];
+  document.getElementById('g-chips').innerHTML=gs.map(g=>{
+    const cnt=active.filter(t=>t.group===g).length;
+    return `<div class="g-chip" data-g="${g}" onclick="toggleGroup('${g}')">${g} (${cnt}명)</div>`;
+  }).join('');
+}
+function toggleGroup(g){
+  const ts=teachers.filter(t=>t.group===g&&t.status==='active');
+  const allSel=ts.every(t=>selTargets.has(t.id));
+  ts.forEach(t=>allSel?selTargets.delete(t.id):selTargets.add(t.id));
+  renderTChips();
+  document.querySelectorAll('.g-chip').forEach(el=>{
+    const ts2=teachers.filter(t=>t.group===el.dataset.g&&t.status==='active');
+    el.classList.toggle('sel',ts2.length>0&&ts2.every(t=>selTargets.has(t.id)));
+  });
+}
+function renderTChips(){
+  const active=teachers.filter(t=>t.status==='active');
+  document.getElementById('t-chips').innerHTML=active.map(t=>
+    `<div class="t-chip ${selTargets.has(t.id)?'sel':''}" onclick="toggleT(${t.id})">${t.name}</div>`
+  ).join('');
+  document.getElementById('sel-count').textContent=`${selTargets.size}명 선택됨`;
+}
+function toggleT(id){
+  selTargets.has(id)?selTargets.delete(id):selTargets.add(id);
+  renderTChips();
+  document.querySelectorAll('.g-chip').forEach(el=>{
+    const ts=teachers.filter(t=>t.group===el.dataset.g&&t.status==='active');
+    el.classList.toggle('sel',ts.length>0&&ts.every(t=>selTargets.has(t.id)));
+  });
+}
+
+const QTYPE_LABEL={short:'단답형',long:'서술형',radio:'객관식(단일)',check:'객관식(복수)',file:'파일 첨부'};
+function renderQList(){
+  document.getElementById('q-list').innerHTML=curQ.map((q,i)=>`
+    <div class="q-item">
+      <div class="q-head">
+        <span class="q-num">${i+1}</span>
+        <span class="q-type-tag">${QTYPE_LABEL[q.type]}</span>
+        <button class="q-del" onclick="delQ(${q.id})">✕</button>
+      </div>
+      <input class="inp" value="${q.text}" onchange="curQ.find(x=>x.id===${q.id}).text=this.value" style="margin-bottom:${(q.type==='radio'||q.type==='check')?'9px':'0'}">
+      ${(q.type==='radio'||q.type==='check')?`
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          ${(q.options||[]).map((o,oi)=>`
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--muted);width:16px">${oi+1}.</span>
+              <input class="inp inp-sm" style="flex:1" value="${o}" onchange="curQ.find(x=>x.id===${q.id}).options[${oi}]=this.value">
+              <button onclick="rmOpt(${q.id},${oi})" style="background:none;border:none;cursor:pointer;color:var(--muted)">✕</button>
+            </div>`).join('')}
+          <button class="add-btn" onclick="addOpt(${q.id})" style="align-self:flex-start;margin-top:3px">＋ 보기 추가</button>
+        </div>`:''}
+    </div>`).join('');
+}
+function addQ(type){
+  const def={radio:['예','아니오'],check:['항목 1','항목 2'],short:[],long:[],file:[]};
+  curQ.push({id:qIdx++,type,text:'질문을 입력하세요',options:[...def[type]]});
+  renderQList();
+}
+function delQ(id){curQ=curQ.filter(q=>q.id!==id);renderQList();}
+function addOpt(id){curQ.find(q=>q.id===id).options.push('새 보기');renderQList();}
+function rmOpt(id,oi){curQ.find(q=>q.id===id).options.splice(oi,1);renderQList();}
+
+async function publishSurvey(){
+  const title=document.getElementById('c-title').value.trim();
+  if(!title){toast('수합 제목을 입력해주세요.');return;}
+  if(!selTargets.size){toast('대상자를 선택해주세요.');return;}
+  if(!curQ.length){toast('질문을 하나 이상 추가해주세요.');return;}
+  const btn=document.getElementById('pub-btn');
+  btn.innerHTML='<span class="spinner"></span> 저장 중...';btn.disabled=true;
+  try{
+    const {data:sv,error:e1}=await sb.from('surveys').insert({
+      title,
+      description:document.getElementById('c-desc').value,
+      deadline:document.getElementById('c-deadline').value||null,
+      questions:curQ,
+    }).select().single();
+    if(e1)throw e1;
+    const rows=[...selTargets].map(tid=>({survey_id:sv.id,teacher_id:tid}));
+    const {error:e2}=await sb.from('targets').insert(rows);
+    if(e2)throw e2;
+    surveys.unshift(sv);
+    const base=location.href.replace(/\/[^/]*$/,'/');
+    const link=`${base}school-survey-form.html?sid=${sv.id}`;
+    document.getElementById('share-link').textContent=link;
+    openM('m-link');
+  }catch(err){
+    toast('저장 실패: '+err.message);
+  }finally{
+    btn.innerHTML='배포하기 →';btn.disabled=false;
+  }
+}
+
+// ─── 응답 현황 ───
+async function initResponses(){
+  await loadSurveys();
+  const sel=document.getElementById('resp-sel');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">수합을 선택하세요</option>'+surveys.map(s=>`<option value="${s.id}">${s.title}</option>`).join('');
+  if(cur)sel.value=cur;
+  if(cur)loadResponses();
+}
+async function loadResponses(){
+  const sid=parseInt(document.getElementById('resp-sel').value);
+  if(!sid){
+    document.getElementById('r-stats').hidden=true;
+    document.getElementById('r-tbl').hidden=true;
+    document.getElementById('pend-box').hidden=true;
+    return;
+  }
+  showLoading(true);
+  const [{data:tData},{data:rData}]=await Promise.all([
+    sb.from('targets').select('teacher_id').eq('survey_id',sid),
+    sb.from('responses').select('teacher_id,submitted_at,answers').eq('survey_id',sid),
+  ]);
+  curSurveyTargets=(tData||[]).map(r=>r.teacher_id);
+  curSurveyResponses=rData||[];
+  showLoading(false);
+  renderRespTable();
+}
+function renderRespTable(){
+  const onlyP=document.getElementById('only-pend').checked;
+  const rMap={};
+  curSurveyResponses.forEach(r=>rMap[r.teacher_id]=r);
+  let rows=curSurveyTargets.map(tid=>({
+    t:teachers.find(x=>x.id===tid),
+    resp:rMap[tid]||null,
+    done:!!rMap[tid],
+    time:rMap[tid]?new Date(rMap[tid].submitted_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'
+  }));
+  if(onlyP)rows=rows.filter(r=>!r.done);
+  const done=curSurveyTargets.filter(tid=>rMap[tid]).length;
+  const total=curSurveyTargets.length;
+  document.getElementById('r-done').textContent=done;
+  document.getElementById('r-pend').textContent=total-done;
+  document.getElementById('r-rate').textContent=total?Math.round(done/total*100)+'%':'—';
+  document.getElementById('r-stats').hidden=false;
+  document.getElementById('r-tbl').hidden=false;
+  document.getElementById('r-tbody').innerHTML=rows.map((row,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:11px">${String(i+1).padStart(2,'0')}</td>
+      <td><strong>${row.t?row.t.name:'?'}</strong></td>
+      <td><span class="badge bg-blue">${row.t?.group||''}</span> <span style="font-size:12px;color:var(--muted)">${row.t?.note||''}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${row.time}</td>
+      <td>${row.done?`<span class="dot dot-g"></span><span style="color:var(--green)">완료</span>`:`<span class="dot dot-r"></span><span style="color:var(--red)">미응답</span>`}</td>
+      <td>${row.done?`<button class="btn btn-g btn-sm" onclick='showRespDetail(${JSON.stringify(row.resp)},${row.t?.id})'>상세 보기</button>`:`<span style="color:var(--muted);font-size:12px">—</span>`}</td>
+    </tr>`).join('');
+  // 미응답 박스
+  if(onlyP&&total-done>0){
+    const pend=curSurveyTargets.filter(tid=>!rMap[tid]).map(tid=>teachers.find(t=>t.id===tid)).filter(Boolean);
+    document.getElementById('pend-names').textContent=pend.map(t=>`${t.name} (${t.note||t.group||''})`).join('\n');
+    document.getElementById('pend-box').hidden=false;
+  }else{
+    document.getElementById('pend-box').hidden=true;
+  }
+}
+
+async function showRespDetail(resp, teacherId){
+  const sid=parseInt(document.getElementById('resp-sel').value);
+  const sv=surveys.find(x=>x.id===sid);
+  const t=teachers.find(x=>x.id===teacherId);
+  if(!sv||!resp)return;
+  const answers=resp.answers||{};
+  const submittedAt=new Date(resp.submitted_at).toLocaleString('ko-KR');
+  document.getElementById('m-resp-title').textContent=`${t?.name||'?'} 선생님 응답`;
+  document.getElementById('m-resp-meta').textContent=`제출 시각: ${submittedAt}`;
+
+  // 파일 목록 가져오기
+  let fileUrls={};
+  try{
+    const{data:files}=await sb.storage.from('attachments').list(`${sid}/${teacherId}`);
+    if(files){
+        for(const f of files){
+          const{data:urlData}=sb.storage.from('attachments').getPublicUrl(`${sid}/${teacherId}/${f.name}`);
+          const qid=String(f.name.split('_')[0]);
+          fileUrls[qid]={url:urlData.publicUrl,name:f.name.replace(/^\d+_/,'')};
+        }
+      }
+  }catch(e){}
+
+  const qs=sv.questions||[];
+  document.getElementById('m-resp-body').innerHTML=qs.map((q,i)=>{
+    const key=String(q.id);
+    const ans=answers[key]??'';
+    const fileInfo=fileUrls[key];
+    let ansHtml='';
+    if(q.type==='file'){
+      if(fileInfo){
+        ansHtml=`<a href="${fileInfo.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:13px;text-decoration:none;padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--blue-l)">
+          📎 ${fileInfo.name} <span style="font-size:11px;opacity:.7">(클릭해서 열기)</span>
+        </a>`;
+      } else {
+        ansHtml=`<span style="color:var(--muted);font-size:13px">${ans||'첨부 없음'}</span>`;
+      }
+    } else if(Array.isArray(ans)){
+      ansHtml=ans.map(v=>`<span class="badge bg-blue" style="margin-right:4px">${v}</span>`).join('');
+    } else {
+      ansHtml=`<div style="background:var(--s2);border-radius:7px;padding:10px 12px;font-size:13px;line-height:1.6;white-space:pre-wrap">${ans||'<span style="color:var(--muted)">응답 없음</span>'}</div>`;
+    }
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em">Q${i+1} · ${{short:'단답형',long:'서술형',radio:'객관식',check:'복수선택',file:'파일'}[q.type]||q.type}</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:9px">${q.text}</div>
+      ${ansHtml}
+    </div>`;
+  }).join('');
+  openM('m-resp');
+}
+
+function copyNames(){
+  const rMap={};curSurveyResponses.forEach(r=>rMap[r.teacher_id]=true);
+  const names=curSurveyTargets.filter(tid=>!rMap[tid]).map(tid=>teachers.find(t=>t.id===tid)).filter(Boolean).map(t=>t.name).join(', ');
+  navigator.clipboard.writeText(names).then(showCopyOk);
+}
+function copyNamesFull(){
+  const rMap={};curSurveyResponses.forEach(r=>rMap[r.teacher_id]=true);
+  const lines=curSurveyTargets.filter(tid=>!rMap[tid]).map(tid=>teachers.find(t=>t.id===tid)).filter(Boolean).map(t=>`${t.name} (${t.note||t.group||''})`).join('\n');
+  navigator.clipboard.writeText(lines).then(showCopyOk);
+}
+function showCopyOk(){const el=document.getElementById('copy-ok');el.style.display='inline';setTimeout(()=>el.style.display='none',2200);}
+
+function exportCSV(){
+  const sid=parseInt(document.getElementById('resp-sel').value);
+  if(!sid){toast('수합을 선택해주세요.');return;}
+  const s=surveys.find(x=>x.id===sid);
+  const rMap={};curSurveyResponses.forEach(r=>rMap[r.teacher_id]=r);
+  const rows=[['이름','그룹','담당','제출시각','상태']];
+  curSurveyTargets.forEach(tid=>{
+    const t=teachers.find(x=>x.id===tid)||{};
+    const r=rMap[tid];
+    rows.push([t.name||'',t.group||'',t.note||'',r?new Date(r.submitted_at).toLocaleString('ko-KR'):'',r?'완료':'미응답']);
+  });
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${s?.title||'응답'}_결과.csv`;a.click();
+}
+
+// ─── 선생님 명단 ───
+async function renderTeachers(){
+  await loadTeachers(); await loadGroups();
+  const q=document.getElementById('t-search')?.value||'';
+  const gf=document.getElementById('t-gf')?.value||'';
+  const sf=document.getElementById('t-sf')?.value||'';
+  let list=teachers.filter(t=>
+    (!q||t.name.includes(q))&&
+    (!gf||t.group===gf)&&
+    (!sf||t.status===sf)
+  );
+  document.getElementById('t-count').textContent=list.length+'명';
+  // 그룹 필터 옵션 동기화
+  const gsel=document.getElementById('t-gf');
+  if(gsel){
+    const cv=gsel.value;
+    gsel.innerHTML='<option value="">전체 그룹</option>'+groups.map(g=>`<option value="${g}">${g}</option>`).join('');
+    gsel.value=cv;
+  }
+  document.getElementById('t-tbody').innerHTML=list.map(t=>`
+    <tr>
+      <td><strong>${t.name}</strong></td>
+      <td><span class="badge bg-blue">${t.group||'—'}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${t.note||''}</td>
+      <td><span class="badge ${t.status==='active'?'bg-green':'bg-red'}">${t.status==='active'?'재직':'휴직'}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-g btn-sm" onclick="editTeacher(${t.id})">수정</button>
+        <button class="btn btn-r btn-sm" onclick="delTeacher(${t.id})">삭제</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openAddTeacher(){
+  document.getElementById('m-t-title').textContent='선생님 추가';
+  document.getElementById('et-id').value='';
+  document.getElementById('et-name').value='';
+  document.getElementById('et-note').value='';
+  document.getElementById('et-status').value='active';
+  syncGSel('et-group','');
+  openM('m-t');
+}
+function editTeacher(id){
+  const t=teachers.find(x=>x.id===id);if(!t)return;
+  document.getElementById('m-t-title').textContent='선생님 정보 수정';
+  document.getElementById('et-id').value=id;
+  document.getElementById('et-name').value=t.name;
+  document.getElementById('et-note').value=t.note||'';
+  document.getElementById('et-status').value=t.status;
+  syncGSel('et-group',t.group||'');
+  openM('m-t');
+}
+function syncGSel(selId,cur){
+  const sel=document.getElementById(selId);
+  sel.innerHTML='<option value="">없음</option>'+groups.map(g=>`<option value="${g}">${g}</option>`).join('');
+  sel.value=cur;
+}
+async function saveTeacher(){
+  const name=document.getElementById('et-name').value.trim();
+  if(!name){toast('이름을 입력해주세요.');return;}
+  const id=document.getElementById('et-id').value;
+  const data={name,group:document.getElementById('et-group').value,note:document.getElementById('et-note').value,status:document.getElementById('et-status').value};
+  let err;
+  if(id){({error:err}=await sb.from('teachers').update(data).eq('id',parseInt(id)));}
+  else{({error:err}=await sb.from('teachers').insert(data));}
+  if(err){toast('저장 실패: '+err.message);return;}
+  closeM('m-t');await loadTeachers();await loadGroups();renderTeachers();toast('✓ 저장되었습니다.');
+}
+async function delTeacher(id){
+  if(!confirm('이 선생님을 삭제하시겠습니까?'))return;
+  const{error}=await sb.from('teachers').delete().eq('id',id);
+  if(error){toast('삭제 실패: '+error.message);return;}
+  await loadTeachers();renderTeachers();toast('삭제되었습니다.');
+}
+
+// 그룹 관리
+function openGroupMgr(){renderGList();openM('m-g');}
+function renderGList(){
+  document.getElementById('g-list').innerHTML=groups.map(g=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1;font-weight:500">${g}</span>
+      <span class="badge bg-gray">${teachers.filter(t=>t.group===g).length}명</span>
+      <button class="btn btn-r btn-sm" onclick="delGroup('${g}')">삭제</button>
+    </div>`).join('');
+}
+async function addGroup(){
+  const name=document.getElementById('ng-name').value.trim();
+  if(!name||groups.includes(name)){toast('그룹 이름을 확인해주세요.');return;}
+  groups.push(name);renderGList();document.getElementById('ng-name').value='';toast('✓ 그룹 추가됨');
+}
+async function delGroup(g){
+  if(!confirm(`'${g}' 그룹을 삭제하고 소속 선생님들의 그룹을 초기화할까요?`))return;
+  const{error}=await sb.from('teachers').update({group:''}).eq('group',g);
+  if(error){toast('실패: '+error.message);return;}
+  groups=groups.filter(x=>x!==g);await loadTeachers();renderGList();renderTeachers();toast('삭제됨');
+}
+
+// ─── 유틸 ───
+function openM(id){document.getElementById(id).classList.add('on');}
+function closeM(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.mbg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
+
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),3200);
+}
+function showLoading(v){document.getElementById('loading').style.display=v?'flex':'none';}
+
+function copyLink(){
+  navigator.clipboard.writeText(document.getElementById('share-link').textContent).then(()=>toast('✓ 링크 복사됨'));
+}
+
+// ─── 시작 ───
+init();
+</script>
+</body>
+</html>

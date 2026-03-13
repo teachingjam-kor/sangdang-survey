@@ -187,12 +187,13 @@ async function submitForm(){
   // 답변 수집
   const finalAnswers={};
   for(const q of qs){
+    const key=String(q.id);
     if(q.type==='short'||q.type==='long'){
-      finalAnswers[q.id]=document.getElementById('q-'+q.id)?.value||'';
+      finalAnswers[key]=document.getElementById('q-'+q.id)?.value||'';
     } else if(q.type==='radio'||q.type==='check'){
-      finalAnswers[q.id]=answers[q.id]||'';
+      finalAnswers[key]=answers[String(q.id)]||answers[q.id]||'';
     } else if(q.type==='file'){
-      finalAnswers[q.id]=files[q.id]?.name||answers[q.id]||'';
+      finalAnswers[key]=files[String(q.id)]?.name||files[q.id]?.name||answers[String(q.id)]||'';
     }
   }
   const btn=document.getElementById('sub-btn');
@@ -206,10 +207,11 @@ async function submitForm(){
       submitted_at:new Date().toISOString(),
     },{onConflict:'survey_id,teacher_id'});
     if(error)throw error;
-    // 파일 업로드 (있다면)
+    // 파일 업로드
     for(const [qid,file] of Object.entries(files)){
-      const path=`${sid}/${selectedTeacher}/${qid}_${file.name}`;
-      await sb.storage.from('attachments').upload(path,file,{upsert:true});
+      const path=`${sid}/${selectedTeacher}/${String(qid)}_${file.name}`;
+      const{error:fe}=await sb.storage.from('attachments').upload(path,file,{upsert:true});
+      if(fe)console.warn('파일 업로드 실패:',fe.message);
     }
     showDone();
   }catch(err){
