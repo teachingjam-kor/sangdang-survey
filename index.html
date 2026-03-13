@@ -106,6 +106,22 @@ tr:hover td{background:var(--bg)}
 .filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
 .pending-box{background:var(--red-l);border:1px solid #fcd4c5;border-radius:var(--r);padding:14px 16px;margin-top:14px}
 .pending-names{font-family:'DM Mono',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px 14px;margin:8px 0;line-height:2;word-break:keep-all;white-space:pre-wrap}
+/* 객관식 차트 */
+.chart-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--sh)}
+.chart-q-title{font-size:13px;font-weight:700;margin-bottom:12px}
+.chart-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.chart-label{width:80px;font-size:12px;text-align:right;color:var(--muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chart-bar-wrap{flex:1;background:var(--s2);border-radius:99px;overflow:hidden;height:22px;position:relative}
+.chart-bar-fill{height:100%;border-radius:99px;background:var(--green);transition:width .4s ease;display:flex;align-items:center;padding-left:8px;min-width:0}
+.chart-bar-num{font-size:11px;color:#fff;font-weight:700;white-space:nowrap}
+.chart-pct{width:38px;font-size:12px;font-weight:600;color:var(--text);text-align:right;flex-shrink:0}
+/* 파일 미리보기 모달 */
+.preview-wrap{background:var(--s2);border-radius:8px;overflow:hidden;max-height:60vh;display:flex;align-items:center;justify-content:center}
+.preview-wrap img{max-width:100%;max-height:60vh;object-fit:contain}
+.preview-wrap iframe{width:100%;height:55vh;border:none}
+/* 엑셀 업로드 드롭존 */
+.xl-drop{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .15s;font-size:13px;color:var(--muted);margin-bottom:12px}
+.xl-drop:hover,.xl-drop.over{border-color:var(--green);background:var(--green-l);color:var(--green)}
 /* 모달 */
 .mbg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
 .mbg.on{opacity:1;pointer-events:all}
@@ -199,8 +215,8 @@ tr:hover td{background:var(--bg)}
   <div class="add-bar">
     <button class="add-btn" onclick="addQ('short')">＋ 단답형</button>
     <button class="add-btn" onclick="addQ('long')">＋ 서술형</button>
-    <button class="add-btn" onclick="addQ('radio')">＋ 객관식(단일)</button>
-    <button class="add-btn" onclick="addQ('check')">＋ 객관식(복수)</button>
+    <button class="add-btn" onclick="addQ('radio')" style="color:var(--blue)">● 단일 선택</button>
+    <button class="add-btn" onclick="addQ('check')" style="color:var(--amber)">☑ 복수 선택</button>
     <button class="add-btn" onclick="addQ('file')">＋ 파일 첨부</button>
   </div>
   <div style="display:flex;gap:10px">
@@ -215,6 +231,7 @@ tr:hover td{background:var(--bg)}
     <select class="inp" id="resp-sel" style="width:auto;max-width:280px" onchange="loadResponses()">
       <option value="">수합을 선택하세요</option>
     </select>
+    <button class="btn btn-g btn-sm" id="resp-link-btn" onclick="showSurveyLink()" hidden>🔗 링크 복사</button>
     <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);user-select:none">
       <input type="checkbox" id="only-pend" onchange="renderRespTable()" style="accent-color:var(--red);width:15px;height:15px">
       미응답자만 보기
@@ -226,6 +243,8 @@ tr:hover td{background:var(--bg)}
     <div class="stat-card"><div class="stat-lbl">미응답</div><div class="stat-val" style="color:var(--red)" id="r-pend">0</div></div>
     <div class="stat-card"><div class="stat-lbl">응답률</div><div class="stat-val" style="color:var(--amber)" id="r-rate">—</div></div>
   </div>
+  <!-- 1번: 객관식 집계 차트 -->
+  <div id="r-chart" hidden></div>
   <div class="tbl-wrap" id="r-tbl" hidden>
     <table>
       <thead><tr><th>#</th><th>이름</th><th>그룹·담당</th><th>제출 시각</th><th>상태</th><th>응답 내용</th></tr></thead>
@@ -250,6 +269,7 @@ tr:hover td{background:var(--bg)}
     <div class="sec" style="margin-bottom:0">선생님 명단 <span class="badge bg-gray" id="t-count">—</span></div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-g btn-sm" onclick="openGroupMgr()">그룹 관리</button>
+      <button class="btn btn-b btn-sm" onclick="openXlUpload()">📥 엑셀 일괄 업로드</button>
       <button class="btn btn-p" onclick="openAddTeacher()">＋ 선생님 추가</button>
     </div>
   </div>
@@ -297,6 +317,45 @@ tr:hover td{background:var(--bg)}
     </div>
     <div id="g-list"></div>
     <div class="ma"><button class="btn btn-g" onclick="closeM('m-g')">닫기</button></div>
+  </div>
+</div>
+
+<!-- 파일 미리보기 모달 -->
+<div class="mbg" id="m-preview">
+  <div class="modal" style="max-width:680px">
+    <h3 id="m-preview-title">파일 미리보기</h3>
+    <div class="preview-wrap" id="m-preview-body"></div>
+    <div class="ma" style="margin-top:14px">
+      <a id="m-preview-dl" class="btn btn-p" download target="_blank">⬇ 다운로드</a>
+      <button class="btn btn-g" onclick="closeM('m-preview')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 엑셀 일괄 업로드 모달 -->
+<div class="mbg" id="m-xl">
+  <div class="modal" style="max-width:520px">
+    <h3>📥 선생님 엑셀 일괄 업로드</h3>
+    <div style="font-size:12px;color:var(--muted);background:var(--s2);border-radius:8px;padding:12px 14px;margin-bottom:14px;line-height:1.8">
+      엑셀 파일 첫 번째 시트에 아래 형식으로 작성하세요.<br>
+      <strong style="color:var(--text)">A열: 이름 &nbsp;|&nbsp; B열: 그룹 &nbsp;|&nbsp; C열: 담당 &nbsp;|&nbsp; D열: 상태(재직/휴직)</strong><br>
+      1행은 헤더(제목행)로 건너뜁니다.
+    </div>
+    <div class="xl-drop" id="xl-drop" onclick="document.getElementById('xl-file').click()">
+      📊 엑셀 파일(.xlsx)을 클릭하거나 드래그해서 올려주세요
+    </div>
+    <input type="file" id="xl-file" accept=".xlsx,.xls" style="display:none" onchange="onXlFile(this)">
+    <div id="xl-preview" style="max-height:200px;overflow-y:auto;display:none">
+      <div class="tbl-wrap">
+        <table><thead><tr><th>이름</th><th>그룹</th><th>담당</th><th>상태</th></tr></thead>
+        <tbody id="xl-tbody"></tbody></table>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px" id="xl-count"></div>
+    </div>
+    <div class="ma">
+      <button class="btn btn-g" onclick="closeM('m-xl')">취소</button>
+      <button class="btn btn-p" id="xl-save-btn" onclick="saveXlTeachers()" disabled>업로드 저장</button>
+    </div>
   </div>
 </div>
 
@@ -489,32 +548,39 @@ function toggleT(id){
   });
 }
 
-const QTYPE_LABEL={short:'단답형',long:'서술형',radio:'객관식(단일)',check:'객관식(복수)',file:'파일 첨부'};
+const QTYPE_LABEL={short:'단답형',long:'서술형',radio:'단일 선택',check:'복수 선택',file:'파일 첨부'};
+const QTYPE_COLOR={short:'bg-gray',long:'bg-gray',radio:'bg-blue',check:'bg-amber',file:'bg-gray'};
 function renderQList(){
   document.getElementById('q-list').innerHTML=curQ.map((q,i)=>`
     <div class="q-item">
       <div class="q-head">
         <span class="q-num">${i+1}</span>
-        <span class="q-type-tag">${QTYPE_LABEL[q.type]}</span>
+        <span class="badge ${QTYPE_COLOR[q.type]}" style="font-size:11px">${QTYPE_LABEL[q.type]}</span>
+        ${q.type==='radio'?'<span style="font-size:11px;color:var(--blue)">● 하나만 선택</span>':q.type==='check'?'<span style="font-size:11px;color:var(--amber)">☑ 여러 개 선택 가능</span>':''}
         <button class="q-del" onclick="delQ(${q.id})">✕</button>
       </div>
-      <input class="inp" value="${q.text}" onchange="curQ.find(x=>x.id===${q.id}).text=this.value" style="margin-bottom:${(q.type==='radio'||q.type==='check')?'9px':'0'}">
+      <input class="inp" value="${q.text}" onchange="curQ.find(x=>x.id===${q.id}).text=this.value" placeholder="질문 내용을 입력하세요" style="margin-bottom:${(q.type==='radio'||q.type==='check')?'9px':'0'}">
       ${(q.type==='radio'||q.type==='check')?`
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
           ${(q.options||[]).map((o,oi)=>`
             <div style="display:flex;gap:6px;align-items:center">
-              <span style="font-size:11px;color:var(--muted);width:16px">${oi+1}.</span>
-              <input class="inp inp-sm" style="flex:1" value="${o}" onchange="curQ.find(x=>x.id===${q.id}).options[${oi}]=this.value">
-              <button onclick="rmOpt(${q.id},${oi})" style="background:none;border:none;cursor:pointer;color:var(--muted)">✕</button>
+              <span style="font-size:12px;color:var(--muted);width:20px;text-align:center;flex-shrink:0">${q.type==='radio'?'●':'☑'}</span>
+              <input class="inp inp-sm" style="flex:1" value="${o}" placeholder="보기 ${oi+1}" onchange="curQ.find(x=>x.id===${q.id}).options[${oi}]=this.value">
+              <button onclick="rmOpt(${q.id},${oi})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 4px" title="삭제">✕</button>
             </div>`).join('')}
-          <button class="add-btn" onclick="addOpt(${q.id})" style="align-self:flex-start;margin-top:3px">＋ 보기 추가</button>
+          <button class="add-btn" onclick="addOpt(${q.id})" style="align-self:flex-start;margin-top:4px">＋ 보기 추가</button>
         </div>`:''}
     </div>`).join('');
 }
 function addQ(type){
-  const def={radio:['예','아니오'],check:['항목 1','항목 2'],short:[],long:[],file:[]};
-  curQ.push({id:qIdx++,type,text:'질문을 입력하세요',options:[...def[type]]});
+  const def={radio:['보기 1','보기 2','보기 3'],check:['보기 1','보기 2','보기 3'],short:[],long:[],file:[]};
+  curQ.push({id:qIdx++,type,text:'',options:[...def[type]]});
   renderQList();
+  // 방금 추가된 질문 입력창에 포커스
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('#q-list .q-item .inp');
+    if(inputs.length) inputs[inputs.length-1-(type==='radio'||type==='check'?3:0)].focus?.();
+  },50);
 }
 function delQ(id){curQ=curQ.filter(q=>q.id!==id);renderQList();}
 function addOpt(id){curQ.find(q=>q.id===id).options.push('새 보기');renderQList();}
@@ -552,31 +618,82 @@ async function publishSurvey(){
 
 // ─── 응답 현황 ───
 async function initResponses(){
-  await loadSurveys();
+  if(!surveys.length) await loadSurveys();
   const sel=document.getElementById('resp-sel');
   const cur=sel.value;
   sel.innerHTML='<option value="">수합을 선택하세요</option>'+surveys.map(s=>`<option value="${s.id}">${s.title}</option>`).join('');
-  if(cur)sel.value=cur;
-  if(cur)loadResponses();
+  if(cur) sel.value=cur;
+  if(cur) loadResponses();
 }
 async function loadResponses(){
   const sid=parseInt(document.getElementById('resp-sel').value);
   if(!sid){
     document.getElementById('r-stats').hidden=true;
     document.getElementById('r-tbl').hidden=true;
+    document.getElementById('r-chart').hidden=true;
     document.getElementById('pend-box').hidden=true;
     return;
   }
-  showLoading(true);
   const [{data:tData},{data:rData}]=await Promise.all([
     sb.from('targets').select('teacher_id').eq('survey_id',sid),
     sb.from('responses').select('teacher_id,submitted_at,answers').eq('survey_id',sid),
   ]);
   curSurveyTargets=(tData||[]).map(r=>r.teacher_id);
   curSurveyResponses=rData||[];
-  showLoading(false);
+  document.getElementById('resp-link-btn').hidden=false;
   renderRespTable();
+  renderRespChart();
 }
+// ─── 2번: 링크 재조회 ───
+function showSurveyLink(){
+  const sid=parseInt(document.getElementById('resp-sel').value);
+  if(!sid)return;
+  const base=location.href.replace(/\/[^/]*$/,'/');
+  const link=`${base}school-survey-form.html?sid=${sid}`;
+  document.getElementById('share-link').textContent=link;
+  openM('m-link');
+}
+
+// ─── 1번: 객관식 집계 차트 ───
+function renderRespChart(){
+  const sid=parseInt(document.getElementById('resp-sel').value);
+  const sv=surveys.find(x=>x.id===sid);
+  const chartEl=document.getElementById('r-chart');
+  if(!sv){chartEl.hidden=true;return;}
+  const choiceQs=(sv.questions||[]).filter(q=>q.type==='radio'||q.type==='check');
+  if(!choiceQs.length){chartEl.hidden=true;return;}
+
+  const COLORS=['var(--green)','var(--blue)','var(--amber)','var(--red)','#8b5cf6','#ec4899','#14b8a6'];
+  chartEl.innerHTML=choiceQs.map((q,qi)=>{
+    const counts={};
+    (q.options||[]).forEach(o=>counts[o]=0);
+    curSurveyResponses.forEach(r=>{
+      const ans=r.answers?.[String(q.id)];
+      if(Array.isArray(ans)) ans.forEach(v=>{if(v in counts)counts[v]++;});
+      else if(ans && ans in counts) counts[ans]++;
+    });
+    const total=Object.values(counts).reduce((a,b)=>a+b,0)||1;
+    const rows=Object.entries(counts).map(([label,cnt],i)=>{
+      const pct=Math.round(cnt/total*100);
+      return `<div class="chart-row">
+        <div class="chart-label" title="${label}">${label}</div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar-fill" style="width:${pct}%;background:${COLORS[i%COLORS.length]}">
+            ${cnt>0?`<span class="chart-bar-num">${cnt}명</span>`:''}
+          </div>
+        </div>
+        <div class="chart-pct">${pct}%</div>
+      </div>`;
+    }).join('');
+    return `<div class="chart-section">
+      <div class="chart-q-title">Q${sv.questions.indexOf(q)+1}. ${q.text} <span class="badge bg-${q.type==='radio'?'blue':'amber'}">${q.type==='radio'?'단일선택':'복수선택'}</span></div>
+      ${rows}
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">응답자 ${curSurveyResponses.length}명 기준</div>
+    </div>`;
+  }).join('');
+  chartEl.hidden=false;
+}
+
 function renderRespTable(){
   const onlyP=document.getElementById('only-pend').checked;
   const rMap={};
@@ -645,9 +762,14 @@ async function showRespDetail(resp, teacherId){
     let ansHtml='';
     if(q.type==='file'){
       if(fileInfo){
-        ansHtml=`<a href="${fileInfo.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:13px;text-decoration:none;padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--blue-l)">
-          📎 ${fileInfo.name} <span style="font-size:11px;opacity:.7">(클릭해서 열기)</span>
-        </a>`;
+        const ext=fileInfo.name.split('.').pop().toLowerCase();
+        const isImg=['jpg','jpeg','png','gif','webp'].includes(ext);
+        const isPdf=ext==='pdf';
+        ansHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button onclick="previewFile('${fileInfo.url}','${fileInfo.name}')" class="btn btn-b btn-sm">👁 미리보기</button>
+          <a href="${fileInfo.url}" download="${fileInfo.name}" class="btn btn-g btn-sm">⬇ 다운로드</a>
+          <span style="font-size:12px;color:var(--muted)">📎 ${fileInfo.name}</span>
+        </div>`;
       } else {
         ansHtml=`<span style="color:var(--muted);font-size:13px">${ans||'첨부 없음'}</span>`;
       }
@@ -663,6 +785,88 @@ async function showRespDetail(resp, teacherId){
     </div>`;
   }).join('');
   openM('m-resp');
+}
+
+// ─── 3번: 파일 미리보기/다운로드 ───
+function previewFile(url, name){
+  const ext=name.split('.').pop().toLowerCase();
+  const isImg=['jpg','jpeg','png','gif','webp'].includes(ext);
+  const isPdf=ext==='pdf';
+  const isXls=['xls','xlsx'].includes(ext);
+  let bodyHtml='';
+  if(isImg){
+    bodyHtml=`<img src="${url}" alt="${name}" style="max-width:100%;max-height:60vh;object-fit:contain">`;
+  } else if(isPdf){
+    bodyHtml=`<iframe src="${url}" style="width:100%;height:55vh;border:none"></iframe>`;
+  } else if(isXls){
+    bodyHtml=`<div style="padding:24px;text-align:center;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-size:13px">엑셀 파일은 브라우저에서 직접 미리보기가 어렵습니다.<br>아래 다운로드 버튼으로 열어보세요.</div>
+    </div>`;
+  } else {
+    bodyHtml=`<div style="padding:24px;text-align:center;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:10px">📎</div>
+      <div style="font-size:13px">${name}<br>다운로드 후 확인하세요.</div>
+    </div>`;
+  }
+  document.getElementById('m-preview-title').textContent=name;
+  document.getElementById('m-preview-body').innerHTML=bodyHtml;
+  document.getElementById('m-preview-dl').href=url;
+  document.getElementById('m-preview-dl').download=name;
+  closeM('m-resp');
+  openM('m-preview');
+}
+
+// ─── 4번: 엑셀 일괄 업로드 ───
+let xlRows=[];
+function openXlUpload(){
+  xlRows=[];
+  document.getElementById('xl-preview').style.display='none';
+  document.getElementById('xl-save-btn').disabled=true;
+  document.getElementById('xl-file').value='';
+  openM('m-xl');
+}
+async function onXlFile(input){
+  if(!input.files[0])return;
+  // SheetJS 동적 로드
+  if(!window.XLSX){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res;s.onerror=rej;document.head.appendChild(s);
+    });
+  }
+  const buf=await input.files[0].arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  xlRows=data.slice(1).filter(r=>r[0]).map(r=>({
+    name:String(r[0]||'').trim(),
+    group:String(r[1]||'').trim(),
+    note:String(r[2]||'').trim(),
+    status:(String(r[3]||'').trim()==='휴직')?'leave':'active',
+  })).filter(r=>r.name);
+  document.getElementById('xl-tbody').innerHTML=xlRows.map(r=>`
+    <tr>
+      <td>${r.name}</td>
+      <td><span class="badge bg-blue">${r.group||'—'}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${r.note}</td>
+      <td><span class="badge ${r.status==='active'?'bg-green':'bg-red'}">${r.status==='active'?'재직':'휴직'}</span></td>
+    </tr>`).join('');
+  document.getElementById('xl-count').textContent=`총 ${xlRows.length}명 인식됨`;
+  document.getElementById('xl-preview').style.display='block';
+  document.getElementById('xl-save-btn').disabled=xlRows.length===0;
+}
+async function saveXlTeachers(){
+  if(!xlRows.length)return;
+  const btn=document.getElementById('xl-save-btn');
+  btn.innerHTML='<span class="spinner"></span> 저장 중...';btn.disabled=true;
+  const{error}=await sb.from('teachers').insert(xlRows);
+  btn.innerHTML='업로드 저장';btn.disabled=false;
+  if(error){toast('저장 실패: '+error.message);return;}
+  closeM('m-xl');
+  await loadTeachers();await loadGroups();renderTeachers();
+  toast(`✓ ${xlRows.length}명 업로드 완료!`);
 }
 
 function copyNames(){

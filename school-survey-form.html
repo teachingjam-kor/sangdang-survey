@@ -29,10 +29,22 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .q-block{margin-bottom:22px}
 .q-label{font-size:14px;font-weight:600;margin-bottom:10px;line-height:1.5}
 .req{color:var(--red);margin-left:3px}
-.option{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:7px;transition:all .15s;font-size:14px}
+/* 선택지 커스텀 UI */
+.option{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:7px;transition:all .15s;font-size:14px;user-select:none}
 .option:hover{border-color:var(--green);background:var(--green-l)}
-.option input{accent-color:var(--green);width:16px;height:16px;flex-shrink:0}
 .option.checked{border-color:var(--green);background:var(--green-l)}
+.radio-opt.checked{border-color:var(--blue);background:var(--blue-l);}
+.radio-opt:hover{border-color:var(--blue);background:var(--blue-l);}
+.check-opt.checked{border-color:var(--amber);background:var(--amber-l);}
+.check-opt:hover{border-color:var(--amber);background:var(--amber-l);}
+/* 라디오 원 */
+.radio-circle{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.radio-circle.filled{border-color:var(--blue);background:var(--blue)}
+.radio-circle.filled::after{content:'';width:7px;height:7px;border-radius:50%;background:#fff}
+/* 체크박스 박스 */
+.check-box{width:18px;height:18px;border-radius:4px;border:2px solid var(--border);flex-shrink:0;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.check-box.ticked{border-color:var(--amber);background:var(--amber)}
+.check-box.ticked::after{content:'✓';font-size:11px;color:#fff;font-weight:700}
 .textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;min-height:90px;transition:border-color .15s}
 .textarea:focus{outline:none;border-color:var(--green)}
 .file-drop{border:2px dashed var(--border);border-radius:8px;padding:22px;text-align:center;cursor:pointer;transition:all .15s;font-size:13px;color:var(--muted)}
@@ -121,31 +133,60 @@ function renderQ(q,i){
     </div>
     <input type="file" id="fi-${q.id}" style="display:none" onchange="onFile('${q.id}',this)">
   </div>`;
-  if(q.type==='radio') return `<div class="q-block">${label}${(q.options||[]).map(o=>`
-    <label class="option" id="opt-${q.id}-${o}" onclick="selectRadio('${q.id}','${o}')">
-      <input type="radio" name="q${q.id}" value="${o}"> ${o}
-    </label>`).join('')}</div>`;
-  if(q.type==='check') return `<div class="q-block">${label}${(q.options||[]).map(o=>`
-    <label class="option" id="opt-${q.id}-${o}">
-      <input type="checkbox" name="q${q.id}" value="${o}" onchange="toggleCheck('${q.id}','${o}',this.checked)"> ${o}
-    </label>`).join('')}</div>`;
+  if(q.type==='radio') return `<div class="q-block">
+    ${label}
+    <div style="font-size:11px;color:var(--blue);margin-bottom:8px;font-weight:500">● 하나만 선택하세요</div>
+    ${(q.options||[]).map(o=>`
+    <label class="option radio-opt" id="opt-${q.id}-${encodeOpt(o)}" onclick="selectRadio('${q.id}','${o.replace(/'/g,"\\'")}')">
+      <span class="radio-circle" id="rc-${q.id}-${encodeOpt(o)}"></span>
+      <span>${o}</span>
+    </label>`).join('')}
+  </div>`;
+  if(q.type==='check') return `<div class="q-block">
+    ${label}
+    <div style="font-size:11px;color:var(--amber);margin-bottom:8px;font-weight:500">☑ 해당하는 것을 모두 선택하세요</div>
+    ${(q.options||[]).map(o=>`
+    <label class="option check-opt" id="opt-${q.id}-${encodeOpt(o)}" onclick="toggleCheckOpt('${q.id}','${o.replace(/'/g,"\\'")}')">
+      <span class="check-box" id="cb-${q.id}-${encodeOpt(o)}"></span>
+      <span>${o}</span>
+    </label>`).join('')}
+  </div>`;
   return '';
 }
-
+function encodeOpt(s){return btoa(encodeURIComponent(s)).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);}
 function selectRadio(qid,val){
   answers[qid]=val;
   document.querySelectorAll(`[id^="opt-${qid}-"]`).forEach(el=>{
     el.classList.remove('checked');
-    el.querySelector('input').checked=false;
+    const rc=el.querySelector('.radio-circle');
+    if(rc) rc.classList.remove('filled');
   });
-  const el=document.getElementById(`opt-${qid}-${val}`);
-  if(el){el.classList.add('checked');el.querySelector('input').checked=true;}
+  const key=`opt-${qid}-${encodeOpt(val)}`;
+  const el=document.getElementById(key);
+  if(el){
+    el.classList.add('checked');
+    const rc=el.querySelector('.radio-circle');
+    if(rc) rc.classList.add('filled');
+  }
+}
+function toggleCheckOpt(qid,val){
+  if(!answers[qid])answers[qid]=[];
+  const idx=answers[qid].indexOf(val);
+  const checked=idx===-1;
+  if(checked) answers[qid].push(val);
+  else answers[qid].splice(idx,1);
+  const key=`opt-${qid}-${encodeOpt(val)}`;
+  const el=document.getElementById(key);
+  if(el){
+    el.classList.toggle('checked',checked);
+    const cb=el.querySelector('.check-box');
+    if(cb) cb.classList.toggle('ticked',checked);
+  }
 }
 function toggleCheck(qid,val,checked){
   if(!answers[qid])answers[qid]=[];
   if(checked){if(!answers[qid].includes(val))answers[qid].push(val);}
   else{answers[qid]=answers[qid].filter(v=>v!==val);}
-  document.getElementById(`opt-${qid}-${val}`)?.classList.toggle('checked',checked);
 }
 function onFile(qid,input){
   if(input.files[0]){
@@ -172,7 +213,7 @@ async function onSelectTeacher(tid){
       } else if(q.type==='radio'){
         selectRadio(qid,a[qid]);
       } else if(q.type==='check'){
-        (a[qid]||[]).forEach(v=>toggleCheck(qid,v,true));
+        (a[qid]||[]).forEach(v=>toggleCheckOpt(qid,v));
       }
       answers[qid]=a[qid];
     });
