@@ -369,14 +369,14 @@ tr:hover td{background:var(--bg)}
   </div>
 </div>
 
-<!-- 배포 완료 모달 (링크 공유) -->
+<!-- 배포 완료 모달 -->
 <div class="mbg" id="m-link">
   <div class="modal">
-    <h3>✓ 수합이 배포되었습니다!</h3>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">아래 링크를 교내 메신저로 선생님들에게 공유하세요.</p>
+    <h3 id="m-link-title">✓ 수합이 배포되었습니다!</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px" id="m-link-desc">아래 링크를 교내 메신저로 선생님들에게 공유하세요.</p>
     <div class="link-box" id="share-link"></div>
     <button class="btn btn-p" style="width:100%;justify-content:center;margin-bottom:8px" onclick="copyLink()">링크 복사</button>
-    <div class="ma"><button class="btn btn-g" onclick="closeM('m-link');showPage('dashboard')">확인</button></div>
+    <div class="ma"><button class="btn btn-g" id="m-link-ok" onclick="closeM('m-link')">확인</button></div>
   </div>
 </div>
 
@@ -608,6 +608,9 @@ async function publishSurvey(){
     const base=location.href.replace(/\/[^/]*$/,'/');
     const link=`${base}school-survey-form.html?sid=${sv.id}`;
     document.getElementById('share-link').textContent=link;
+    document.getElementById('m-link-title').textContent='✓ 수합이 배포되었습니다!';
+    document.getElementById('m-link-desc').textContent='아래 링크를 교내 메신저로 선생님들에게 공유하세요.';
+    document.getElementById('m-link-ok').onclick=()=>{closeM('m-link');showPage('dashboard');};
     openM('m-link');
   }catch(err){
     toast('저장 실패: '+err.message);
@@ -651,6 +654,9 @@ function showSurveyLink(){
   const base=location.href.replace(/\/[^/]*$/,'/');
   const link=`${base}school-survey-form.html?sid=${sid}`;
   document.getElementById('share-link').textContent=link;
+  document.getElementById('m-link-title').textContent='🔗 응답 링크';
+  document.getElementById('m-link-desc').textContent='선생님들에게 공유할 링크입니다.';
+  document.getElementById('m-link-ok').onclick=()=>closeM('m-link');
   openM('m-link');
 }
 
@@ -744,15 +750,16 @@ async function showRespDetail(resp, teacherId){
   // 파일 목록 가져오기
   let fileUrls={};
   try{
-    const{data:files}=await sb.storage.from('attachments').list(`${sid}/${teacherId}`);
-    if(files){
-        for(const f of files){
-          const{data:urlData}=sb.storage.from('attachments').getPublicUrl(`${sid}/${teacherId}/${f.name}`);
-          const qid=String(f.name.split('_')[0]);
-          fileUrls[qid]={url:urlData.publicUrl,name:f.name.replace(/^\d+_/,'')};
-        }
+    const{data:files,error:fe}=await sb.storage.from('attachments').list(`${sid}/${teacherId}`);
+    if(files && files.length){
+      for(const f of files){
+        // Public URL을 직접 조합 (getPublicUrl이 간헐적으로 실패하는 문제 방지)
+        const url=`${SURL}/storage/v1/object/public/attachments/${sid}/${teacherId}/${encodeURIComponent(f.name)}`;
+        const qid=String(f.name.split('_')[0]);
+        fileUrls[qid]={url, name:f.name.replace(/^\d+_/,'')};
       }
-  }catch(e){}
+    }
+  }catch(e){console.warn('파일 조회 실패',e);}
 
   const qs=sv.questions||[];
   document.getElementById('m-resp-body').innerHTML=qs.map((q,i)=>{
