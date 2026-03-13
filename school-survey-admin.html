@@ -228,7 +228,7 @@ tr:hover td{background:var(--bg)}
   </div>
   <div class="tbl-wrap" id="r-tbl" hidden>
     <table>
-      <thead><tr><th>#</th><th>이름</th><th>그룹·담당</th><th>제출 시각</th><th>상태</th></tr></thead>
+      <thead><tr><th>#</th><th>이름</th><th>그룹·담당</th><th>제출 시각</th><th>상태</th><th>응답 내용</th></tr></thead>
       <tbody id="r-tbody"></tbody>
     </table>
   </div>
@@ -297,6 +297,16 @@ tr:hover td{background:var(--bg)}
     </div>
     <div id="g-list"></div>
     <div class="ma"><button class="btn btn-g" onclick="closeM('m-g')">닫기</button></div>
+  </div>
+</div>
+
+<!-- 개별 응답 상세 모달 -->
+<div class="mbg" id="m-resp">
+  <div class="modal" style="max-width:560px">
+    <h3 id="m-resp-title">응답 내용</h3>
+    <div id="m-resp-meta" style="font-size:12px;color:var(--muted);margin-bottom:16px"></div>
+    <div id="m-resp-body" style="display:flex;flex-direction:column;gap:14px"></div>
+    <div class="ma"><button class="btn btn-g" onclick="closeM('m-resp')">닫기</button></div>
   </div>
 </div>
 
@@ -569,11 +579,12 @@ async function loadResponses(){
 function renderRespTable(){
   const onlyP=document.getElementById('only-pend').checked;
   const rMap={};
-  curSurveyResponses.forEach(r=>rMap[r.teacher_id]=r.submitted_at);
+  curSurveyResponses.forEach(r=>rMap[r.teacher_id]=r);
   let rows=curSurveyTargets.map(tid=>({
     t:teachers.find(x=>x.id===tid),
+    resp:rMap[tid]||null,
     done:!!rMap[tid],
-    time:rMap[tid]?new Date(rMap[tid]).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'
+    time:rMap[tid]?new Date(rMap[tid].submitted_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'
   }));
   if(onlyP)rows=rows.filter(r=>!r.done);
   const done=curSurveyTargets.filter(tid=>rMap[tid]).length;
@@ -590,6 +601,7 @@ function renderRespTable(){
       <td><span class="badge bg-blue">${row.t?.group||''}</span> <span style="font-size:12px;color:var(--muted)">${row.t?.note||''}</span></td>
       <td style="font-size:12px;color:var(--muted)">${row.time}</td>
       <td>${row.done?`<span class="dot dot-g"></span><span style="color:var(--green)">완료</span>`:`<span class="dot dot-r"></span><span style="color:var(--red)">미응답</span>`}</td>
+      <td>${row.done?`<button class="btn btn-g btn-sm" onclick='showRespDetail(${JSON.stringify(row.resp)},${row.t?.id})'>상세 보기</button>`:`<span style="color:var(--muted);font-size:12px">—</span>`}</td>
     </tr>`).join('');
   // 미응답 박스
   if(onlyP&&total-done>0){
@@ -599,6 +611,57 @@ function renderRespTable(){
   }else{
     document.getElementById('pend-box').hidden=true;
   }
+}
+
+async function showRespDetail(resp, teacherId){
+  const sid=parseInt(document.getElementById('resp-sel').value);
+  const sv=surveys.find(x=>x.id===sid);
+  const t=teachers.find(x=>x.id===teacherId);
+  if(!sv||!resp)return;
+  const answers=resp.answers||{};
+  const submittedAt=new Date(resp.submitted_at).toLocaleString('ko-KR');
+  document.getElementById('m-resp-title').textContent=`${t?.name||'?'} 선생님 응답`;
+  document.getElementById('m-resp-meta').textContent=`제출 시각: ${submittedAt}`;
+
+  // 파일 목록 가져오기
+  let fileUrls={};
+  try{
+    const{data:files}=await sb.storage.from('attachments').list(`${sid}/${teacherId}`);
+    if(files){
+      for(const f of files){
+        const {data:urlData}=sb.storage.from('attachments').getPublicUrl(`${sid}/${teacherId}/${f.name}`);
+        // qid는 파일명에서 _ 앞부분
+        const qid=f.name.split('_')[0];
+        fileUrls[qid]={url:urlData.publicUrl, name:f.name.replace(/^\d+_/,'')};
+      }
+    }
+  }catch(e){}
+
+  const qs=sv.questions||[];
+  document.getElementById('m-resp-body').innerHTML=qs.map((q,i)=>{
+    const ans=answers[q.id]??answers[String(q.id)]??'';
+    const fileInfo=fileUrls[q.id]||fileUrls[String(q.id)];
+    let ansHtml='';
+    if(q.type==='file'){
+      if(fileInfo){
+        ansHtml=`<a href="${fileInfo.url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:13px;text-decoration:none;padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--blue-l)">
+          📎 ${fileInfo.name} <span style="font-size:11px;opacity:.7">(클릭해서 열기)</span>
+        </a>`;
+      } else {
+        ansHtml=`<span style="color:var(--muted);font-size:13px">${ans||'첨부 없음'}</span>`;
+      }
+    } else if(Array.isArray(ans)){
+      ansHtml=ans.map(v=>`<span class="badge bg-blue" style="margin-right:4px">${v}</span>`).join('');
+    } else {
+      ansHtml=`<div style="background:var(--s2);border-radius:7px;padding:10px 12px;font-size:13px;line-height:1.6;white-space:pre-wrap">${ans||'<span style="color:var(--muted)">응답 없음</span>'}</div>`;
+    }
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em">Q${i+1} · ${{short:'단답형',long:'서술형',radio:'객관식',check:'복수선택',file:'파일'}[q.type]||q.type}</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:9px">${q.text}</div>
+      ${ansHtml}
+    </div>`;
+  }).join('');
+  openM('m-resp');
 }
 
 function copyNames(){
