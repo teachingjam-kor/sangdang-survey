@@ -749,14 +749,15 @@ async function showRespDetail(resp, teacherId){
 
   // 파일 목록 가져오기 - Storage 조회 + answers 파일명 fallback 이중 처리
   let fileUrls={};
+  console.log(`Storage 조회 경로: ${sid}/${teacherId}`);
   try{
-    const{data:files}=await sb.storage.from('attachments').list(`${sid}/${teacherId}`);
+    const{data:files, error:le}=await sb.storage.from('attachments').list(`${sid}/${teacherId}`);
+    console.log('Storage 목록 결과:', files, '에러:', le);
     if(files && files.length){
       for(const f of files){
         const url=`${SURL}/storage/v1/object/public/attachments/${sid}/${teacherId}/${f.name}`;
-        // 파일명이 "qid.ext" 형식 (예: 1.pdf)
+        console.log('파일 URL:', url);
         const key=f.name.split('.')[0];
-        // answers에서 원본 파일명 가져오기
         const displayName=answers[key]||f.name;
         fileUrls[key]={url, name:displayName};
       }
