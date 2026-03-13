@@ -773,10 +773,10 @@ async function showRespDetail(resp, teacherId){
     if(!fileUrls[key]){
       const fileName=answers[key];
       if(fileName){
-        // 업로드 당시 경로: sid/teacherId/qid_filename
-        const storageName=`${key}_${fileName}`;
+        const safeName=fileName.replace(/\s+/g,'_');
+        const storageName=`${key}_${safeName}`;
         const url=`${SURL}/storage/v1/object/public/attachments/${sid}/${teacherId}/${encodeURIComponent(storageName)}`;
-        fileUrls[key]={url, name:fileName};
+        fileUrls[key]={url, name:fileName}; // 표시는 원본 파일명으로
       }
     }
   });

@@ -250,9 +250,12 @@ async function submitForm(){
     if(error)throw error;
     // 파일 업로드
     for(const [qid,file] of Object.entries(files)){
-      const path=`${sid}/${selectedTeacher}/${String(qid)}_${file.name}`;
+      const safeName=file.name.replace(/\s+/g,'_');
+      const path=`${sid}/${selectedTeacher}/${String(qid)}_${safeName}`;
       const{error:fe}=await sb.storage.from('attachments').upload(path,file,{upsert:true});
       if(fe)console.warn('파일 업로드 실패:',fe.message);
+      // answers에도 안전한 파일명으로 업데이트
+      finalAnswers[String(qid)]=safeName;
     }
     showDone();
   }catch(err){
